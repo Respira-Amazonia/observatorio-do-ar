@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "name": "ESP-IDF",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/home/t_aaago/esp/esp-idf/components/**"
+      ],
+      "compilerPath": "/home/t_aaago/.espressif/tools/xtensa-esp32s3-elf/esp-12.2.0_20230208/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc",
+      "browse": {
+        "path": [
+          "${workspaceFolder}",
+          "/home/t_aaago/esp/esp-idf/components"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "cStandard": "c17",
+      "cppStandard": "gnu++17"
+    }
+  ],
+  "version": 4
+}

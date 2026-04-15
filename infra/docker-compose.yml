@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: observatorio_db
+    environment:
+      POSTGRES_DB: observatorio
+      POSTGRES_USER: admin_ufpa
+      POSTGRES_PASSWORD: observatorio_laai
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - observatorio_net
+
+  api:
+    build: ./api
+    container_name: observatorio_api
+    environment:
+      DB_USER: admin_ufpa
+      DB_PASSWORD: observatorio_laai
+      DB_NAME: observatorio
+      DB_HOST: observatorio_db
+      DB_PORT: 5432
+    ports: 
+      - "8000:8000"
+    networks:
+      - observatorio_net
+    depends_on:
+      - db
+
+  mosquitto:
+    image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
+    container_name: observatorio_broker
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/etc/mosquitto/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - observatorio_net
+    depends_on:
+      - db
+      - api
+
+networks:
+  observatorio_net:
+    driver: bridge
+
+volumes:
+  db_data:
