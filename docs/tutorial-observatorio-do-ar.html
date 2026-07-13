@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subindo o servidor — Observatório do Ar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --haze:#E7ECF0;
+    --haze-deep:#D3DCE3;
+    --ink:#101A22;
+    --ink-soft:#475764;
+    --ink-faint:#7A8A97;
+    --rule:#B9C4CB;
+    --teal:#395A7F;       /* azul profundo da logo */
+    --sky:#6E9FC1;        /* azul claro da logo */
+    --laser:#C8202E;
+    --amber:#B67A0B;
+    --panel:#DCE4EA;      /* superfície tingida — nunca branca */
+    --panel-deep:#CBD7E0; /* superfície do diagrama */
+
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --display:"Bricolage Grotesque","IBM Plex Sans",system-ui,sans-serif;
+  }
+
+  *{box-sizing:border-box}
+
+  html{scroll-behavior:smooth;scroll-padding-top:2rem}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *{animation:none!important;transition:none!important}
+  }
+
+  body{
+    margin:0;
+    background:var(--haze);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    border-bottom:1px solid var(--rule);
+    background:linear-gradient(180deg,#D6E0E8 0%,var(--haze) 100%);
+    overflow:hidden;
+  }
+  #particles{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+  }
+  .hero-inner{
+    position:relative;
+    z-index:1;
+    max-width:1180px;
+    margin:0 auto;
+    padding:5.5rem 2rem 3.5rem;
+  }
+  .brand{
+    margin:0 0 2rem;
+  }
+  .brand svg{
+    width:148px;
+    max-width:100%;
+    height:auto;
+    display:block;
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:.7rem;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin:0 0 1.5rem;
+    display:flex;
+    align-items:center;
+    gap:.6rem;
+  }
+  .eyebrow::before{
+    content:"";
+    width:7px;height:7px;
+    border-radius:50%;
+    background:var(--laser);
+    box-shadow:0 0 0 3px rgba(200,32,46,.16);
+  }
+  .hero h1{
+    font-family:var(--display);
+    font-weight:800;
+    font-size:clamp(2.4rem,5.6vw,4.3rem);
+    line-height:1.02;
+    letter-spacing:-.025em;
+    margin:0 0 1.1rem;
+    max-width:15ch;
+  }
+  .hero h1 em{
+    font-style:normal;
+    color:var(--teal);
+  }
+  .lede{
+    max-width:52ch;
+    font-size:1.075rem;
+    color:var(--ink-soft);
+    margin:0 0 2.6rem;
+  }
+  .readout{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0;
+    border:1px solid var(--rule);
+    background:rgba(220,228,234,.75);
+    backdrop-filter:blur(2px);
+    width:fit-content;
+    max-width:100%;
+  }
+  .readout div{
+    padding:.75rem 1.35rem;
+    border-right:1px solid var(--rule);
+  }
+  .readout div:last-child{border-right:none}
+  .readout dt{
+    font-family:var(--mono);
+    font-size:.62rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 .2rem;
+  }
+  .readout dd{
+    font-family:var(--mono);
+    font-size:.9rem;
+    font-weight:600;
+    margin:0;
+    color:var(--ink);
+  }
+
+  /* ---------- LAYOUT ---------- */
+  .shell{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 2rem 6rem;
+    display:grid;
+    grid-template-columns:210px minmax(0,1fr);
+    gap:4rem;
+    align-items:start;
+  }
+
+  /* ---------- RAIL ---------- */
+  .rail{
+    position:sticky;
+    top:2rem;
+    padding-top:3.5rem;
+  }
+  .rail-title{
+    font-family:var(--mono);
+    font-size:.62rem;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 1rem;
+    padding-bottom:.7rem;
+    border-bottom:1px solid var(--rule);
+  }
+  .rail ol{
+    list-style:none;
+    margin:0;
+    padding:0;
+    counter-reset:step;
+  }
+  .rail li{margin:0}
+  .rail a{
+    display:grid;
+    grid-template-columns:1.9rem 1fr;
+    gap:.15rem;
+    padding:.42rem 0;
+    text-decoration:none;
+    color:var(--ink-faint);
+    font-size:.815rem;
+    line-height:1.35;
+    border-left:2px solid transparent;
+    padding-left:.7rem;
+    transition:color .18s ease,border-color .18s ease;
+  }
+  .rail a::before{
+    counter-increment:step;
+    content:counter(step,decimal-leading-zero);
+    font-family:var(--mono);
+    font-size:.7rem;
+    color:var(--rule);
+    transition:color .18s ease;
+  }
+  .rail a:hover{color:var(--ink)}
+  .rail a.on{
+    color:var(--ink);
+    font-weight:600;
+    border-left-color:var(--laser);
+  }
+  .rail a.on::before{color:var(--laser)}
+
+  /* ---------- CONTENT ---------- */
+  main{padding-top:3.5rem;min-width:0}
+
+  section{
+    padding-top:1rem;
+    margin-bottom:3.9rem;
+    scroll-margin-top:2rem;
+  }
+
+  h2{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:1.85rem;
+    letter-spacing:-.015em;
+    line-height:1.15;
+    margin:0 0 .35rem;
+    padding-top:1.4rem;
+    border-top:1px solid var(--rule);
+  }
+  .step-tag{
+    font-family:var(--mono);
+    font-size:.66rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--laser);
+    display:block;
+    margin-bottom:.9rem;
+  }
+  h3{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:1.02rem;
+    letter-spacing:.005em;
+    margin:2.2rem 0 .7rem;
+    color:var(--ink);
+  }
+  h3::before{
+    content:"—";
+    color:var(--teal);
+    margin-right:.5rem;
+  }
+
+  p{margin:0 0 1.05rem;max-width:66ch}
+  a{color:var(--teal)}
+
+  ul{margin:0 0 1.1rem;padding-left:0;list-style:none;max-width:66ch}
+  ul li{
+    position:relative;
+    padding-left:1.1rem;
+    margin-bottom:.4rem;
+  }
+  ul li::before{
+    content:"";
+    position:absolute;
+    left:0;top:.68em;
+    width:5px;height:5px;
+    background:var(--teal);
+  }
+
+  code{
+    font-family:var(--mono);
+    font-size:.855em;
+    background:var(--haze-deep);
+    padding:.1em .35em;
+    color:var(--ink);
+  }
+
+  /* ---------- CODE BLOCKS ---------- */
+  .code{
+    position:relative;
+    margin:0 0 1.3rem;
+    background:var(--ink);
+    border-left:2px solid var(--teal);
+  }
+  .code.out{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-left:2px solid var(--ink-faint);
+  }
+  .code-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:.45rem .8rem .45rem 1rem;
+    border-bottom:1px solid rgba(255,255,255,.09);
+  }
+  .code.out .code-head{border-bottom:1px solid var(--rule)}
+  .code-label{
+    font-family:var(--mono);
+    font-size:.6rem;
+    letter-spacing:.15em;
+    text-transform:uppercase;
+    color:#7E8C92;
+  }
+  .code.out .code-label{color:var(--ink-faint)}
+  .copy{
+    font-family:var(--mono);
+    font-size:.62rem;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    background:none;
+    border:1px solid rgba(255,255,255,.18);
+    color:#A9B5BA;
+    padding:.2rem .55rem;
+    cursor:pointer;
+    transition:color .15s ease,border-color .15s ease;
+  }
+  .copy:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+  .copy:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .copy.done{color:#5FD3A5;border-color:#5FD3A5}
+  .code pre{
+    margin:0;
+    padding:1rem 1.1rem;
+    overflow-x:auto;
+    font-family:var(--mono);
+    font-size:.83rem;
+    line-height:1.6;
+    color:#DCE3E5;
+  }
+  .code.out pre{color:var(--ink-soft)}
+
+  /* ---------- CALLOUTS ---------- */
+  .note{
+    border:1px solid var(--rule);
+    border-left:3px solid var(--teal);
+    background:var(--panel);
+    padding:1rem 1.2rem;
+    margin:0 0 1.3rem;
+    max-width:66ch;
+  }
+  .note.warn{border-left-color:var(--amber)}
+  .note.danger{border-left-color:var(--laser)}
+  .note-tag{
+    font-family:var(--mono);
+    font-size:.62rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+    display:block;
+    margin-bottom:.4rem;
+  }
+  .note.warn .note-tag{color:var(--amber)}
+  .note.danger .note-tag{color:var(--laser)}
+  .note p{margin:0;font-size:.93rem}
+  .note p + p{margin-top:.7rem}
+
+  /* ---------- TABLES ---------- */
+  table{
+    border-collapse:collapse;
+    width:100%;
+    margin:0 0 1.4rem;
+    font-size:.9rem;
+  }
+  th,td{
+    text-align:left;
+    padding:.62rem .9rem;
+    border-bottom:1px solid var(--rule);
+  }
+  th{
+    font-family:var(--mono);
+    font-size:.62rem;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    font-weight:500;
+    border-bottom:1px solid var(--ink);
+  }
+  td code{background:transparent;padding:0}
+  tbody tr:hover{background:var(--panel)}
+
+  /* ---------- DIAGRAM ---------- */
+  .diagram{
+    background:var(--panel-deep);
+    border:1px solid var(--teal);
+    border-left-width:2px;
+    padding:1.4rem;
+    overflow-x:auto;
+    margin:0 0 1.4rem;
+  }
+  .diagram pre{
+    margin:0;
+    font-family:var(--mono);
+    font-size:.76rem;
+    line-height:1.45;
+    color:#22394F;
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--rule);
+    padding:2.2rem 2rem;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  footer p{
+    font-family:var(--mono);
+    font-size:.72rem;
+    color:var(--ink-faint);
+    letter-spacing:.05em;
+    margin:0;
+  }
+
+  :focus-visible{outline:2px solid var(--laser);outline-offset:3px}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:900px){
+    .shell{
+      grid-template-columns:1fr;
+      gap:0;
+      padding:0 1.4rem 4rem;
+    }
+    .rail{
+      position:static;
+      padding-top:2.5rem;
+    }
+    .rail ol{
+      display:flex;
+      flex-wrap:wrap;
+      gap:.2rem .9rem;
+    }
+    .rail a{border-left:none;padding-left:0}
+    .rail a.on{border-left:none}
+    main{padding-top:2.4rem}
+    .hero-inner{padding:4rem 1.4rem 2.8rem}
+    footer{padding:2rem 1.4rem}
+    .readout div{padding:.65rem 1rem}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="particles" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <div class="brand">
+      <svg viewBox="0 0 150 67" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="Observatório do Ar">
+        <path d="M50 28.5999C78.5 -14.4001 104 44.0999 148.5 28.5999" stroke="#6E9FC1"/>
+        <path d="M99.5 38.1875C71 81.1875 45.5 22.6875 1 38.1875" stroke="#6E9FC1"/>
+        <path d="M12 26C42.5 30.5 49.5 7.5 70 7.5" stroke="#6E9FC1"/>
+        <path d="M138 41.0836C107.5 36.5836 100.5 59.5836 80 59.5836" stroke="#6E9FC1"/>
+        <path d="M4 22C35.1819 20.3294 49.5 0.5 74 0.5" stroke="#6E9FC1"/>
+        <path d="M143.5 22C112.318 20.3294 98 0.5 73.5 0.5" stroke="#6E9FC1"/>
+        <path d="M4 44.5C35.1819 46.1706 49.5 66 74 66" stroke="#6E9FC1"/>
+        <path d="M143.5 44.5C112.318 46.1706 98 66 73.5 66" stroke="#6E9FC1"/>
+        <circle cx="9.5" cy="26" r="1.25" stroke="#6E9FC1" stroke-width="0.5"/>
+        <circle cx="140.5" cy="41" r="1.25" stroke="#6E9FC1" stroke-width="0.5"/>
+        <circle cx="146.5" cy="22" r="1.25" stroke="#6E9FC1" stroke-width="0.5"/>
+        <circle cx="1.5" cy="45" r="1.25" stroke="#6E9FC1" stroke-width="0.5"/>
+        <circle cx="101.5" cy="36" r="1.25" stroke="#6E9FC1" stroke-width="0.5"/>
+        <circle cx="48.5" cy="31" r="1.25" stroke="#6E9FC1" stroke-width="0.5"/>
+        <path d="M69.801 29.051V33.25H74L69.801 29.051Z" fill="#395A7F"/>
+        <path d="M78.199 29.051H74V33.25L78.199 29.051Z" fill="#395A7F"/>
+        <path d="M78.199 37.449L78.199 33.25L74 33.25L78.199 37.449Z" fill="#395A7F"/>
+        <path d="M74 33.25V37.449H69.801L74 33.25Z" fill="#395A7F"/>
+        <path d="M78.199 29.051V33.25H74L78.199 29.051Z" fill="#6E9FC1"/>
+        <path d="M69.801 29.051H74V33.25L69.801 29.051Z" fill="#6E9FC1"/>
+        <path d="M69.801 37.449L69.801 33.25L74 33.25L69.801 37.449Z" fill="#6E9FC1"/>
+        <path d="M74 33.25V37.449H78.199L74 33.25Z" fill="#6E9FC1"/>
+        <path d="M74 17.5V29.051H69.801L74 17.5Z" fill="#6E9FC1"/>
+        <path d="M74 17.5V29.051H78.199L74 17.5Z" fill="#395A7F"/>
+        <path d="M89.75 33.25H78.199V37.449L89.75 33.25Z" fill="#395A7F"/>
+        <path d="M89.75 33.25H78.199V29.051L89.75 33.25Z" fill="#6E9FC1"/>
+        <path d="M58.25 33.25H69.801V29.051L58.25 33.25Z" fill="#395A7F"/>
+        <path d="M58.25 33.25H69.801V37.449L58.25 33.25Z" fill="#6E9FC1"/>
+        <path d="M74.199 49V37.449H70L74.199 49Z" fill="#395A7F"/>
+        <path d="M74 49V37.449H78.199L74 49Z" fill="#6E9FC1"/>
+      </svg>
+    </div>
+    <p class="eyebrow">Guia de testes da stack local</p>
+    <h1>Subindo o servidor <em>localmente</em></h1>
+    <p class="lede">Este guia inicia a stack completa, verifica cada serviço e simula uma estação ESP32 publicando telemetria — do primeiro contêiner até a leitura gravada no banco.</p>
+    <dl class="readout">
+      <div><dt>Serviços</dt><dd>4</dd></div>
+      <div><dt>Broker</dt><dd>:1883</dd></div>
+      <div><dt>API</dt><dd>:8000</dd></div>
+      <div><dt>Banco</dt><dd>:5432</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="shell">
+
+  <nav class="rail" aria-label="Etapas do tutorial">
+    <p class="rail-title">Etapas</p>
+    <ol>
+      <li><a href="#pre-requisitos">Pré-requisitos</a></li>
+      <li><a href="#stack">Visão geral da stack</a></li>
+      <li><a href="#pipeline">Pipeline de uma leitura</a></li>
+      <li><a href="#env">Variáveis de ambiente</a></li>
+      <li><a href="#subir">Subindo a stack</a></li>
+      <li><a href="#verificar">Verificando serviços</a></li>
+      <li><a href="#simular">Simulando um ESP32</a></li>
+      <li><a href="#ingestao">Verificando a ingestão</a></li>
+      <li><a href="#rejeicao">Testando rejeição</a></li>
+      <li><a href="#logs">Logs em tempo real</a></li>
+      <li><a href="#parar">Parando a stack</a></li>
+      <li><a href="#credenciais">Credenciais de teste</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="pre-requisitos">
+      <h2><span class="step-tag">Antes de começar</span>Pré-requisitos</h2>
+      <ul>
+        <li><a href="https://docs.docker.com/get-docker/">Docker</a> com o plugin Compose (o comando <code>docker compose</code>, não <code>docker-compose</code>)</li>
+        <li>Um cliente MQTT para simular o ESP32 — <strong>mosquitto-clients</strong> (recomendado) via <code>sudo apt install mosquitto-clients</code>, ou <strong>paho-mqtt</strong> via <code>pip install paho-mqtt</code></li>
+      </ul>
+
+      <p>Confirme que as duas ferramentas respondem:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker compose version
+mosquitto_pub --version</pre>
+      </div>
+    </section>
+
+    <section id="stack">
+      <h2><span class="step-tag">Contexto</span>Visão geral da stack</h2>
+      <p>Quatro contêineres numa rede interna. O broker delega toda autenticação e autorização à API, e o subscriber é quem transforma mensagem publicada em linha no banco.</p>
+
+      <div class="diagram">
+<pre>┌─────────────────────────────────────────────────────┐
+│                   observatorio_net                  │
+│                                                     │
+│  ┌──────────┐    ┌──────────┐    ┌──────────────┐   │
+│  │    db    │◄───│   api    │◄───│  mosquitto   │   │
+│  │  :5432   │    │  :8000   │    │    :1883     │   │
+│  └──────────┘    └──────────┘    └──────┬───────┘   │
+│       ▲                                 │           │
+│       │                        publish  │           │
+│  ┌────┴─────┐                           │           │
+│  │subscriber│◄──────────────────────────┘           │
+│  └──────────┘   subscribe sensores/telemetria/#     │
+└─────────────────────────────────────────────────────┘
+         ▲ portas expostas no host
+         └─ 5432 (banco) · 1883 (broker) · 8000 (api)</pre>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Serviço</th><th>Imagem / Build</th><th>Função</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>db</code></td><td><code>postgres:15-alpine</code></td><td>Banco de dados PostgreSQL</td></tr>
+          <tr><td><code>api</code></td><td><code>./api</code></td><td>Auth e ACL MQTT via HTTP</td></tr>
+          <tr><td><code>mosquitto</code></td><td><code>iegomez/mosquitto-go-auth</code></td><td>Broker MQTT sem conexão anônima</td></tr>
+          <tr><td><code>subscriber</code></td><td><code>./subscriber</code></td><td>Consome telemetria e persiste em <code>leituras</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pipeline">
+      <h2><span class="step-tag">Contexto</span>Pipeline de uma leitura</h2>
+      <p>O caminho percorrido por um pacote de telemetria, do dispositivo até o banco. Repare que a mesma ACL é consultada duas vezes: uma para autorizar a publicação da estação, outra para autorizar a entrega ao subscriber.</p>
+
+      <div class="diagram">
+<pre> ESP32
+   │
+   │  PUBLISH sensores/telemetria/esp32_teste_01
+   │  {"capturado_em": "...", "temperature": 29.3, ...}
+   ▼
+ mosquitto                         FastAPI
+   │──── POST /api/mqtt/auth ────► verifica username + bcrypt hash
+   │◄─── 200 OK ─────────────────  (dispositivo autenticado)
+   │
+   │──── POST /api/mqtt/acl ─────► verifica regras_acl
+   │     acc=2, topic=sensores/    (publish autorizado para %u)
+   │◄─── 200 OK ─────────────────
+   │
+   │  mensagem aceita, enfileirada para entrega
+   │
+   │──── POST /api/mqtt/acl ─────► verifica regras_acl
+   │     acc=1, topic=sensores/    (delivery autorizado para #)
+   │◄─── 200 OK ─────────────────
+   │
+   │  entrega ao subscriber
+   ▼
+ subscriber
+   │  1. deserializa JSON
+   │  2. valida campos obrigatórios
+   │  3. busca dispositivo_id por username_mqtt
+   │
+   │  INSERT INTO leituras
+   │    (dispositivo_id, capturado_em, recebido_em, ...)
+   ▼
+ PostgreSQL — tabela leituras
+   ┌─────────────────────┬──────────────────────────┐
+   │ capturado_em        │ recebido_em              │
+   │ (timestamp device)  │ (timestamp servidor)     │
+   ├─────────────────────┼──────────────────────────┤
+   │ 2026-07-13 17:00 Z  │ 2026-07-13 17:14 Z       │
+   └─────────────────────┴──────────────────────────┘
+          └── diferença indica latência ou período offline</pre>
+      </div>
+
+      <h3>Rejeições na pipeline</h3>
+
+      <table>
+        <thead>
+          <tr><th>Ponto</th><th>Condição</th><th>Resultado</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>auth</code></td><td>credenciais inválidas ou dispositivo inativo</td><td>broker recusa a conexão (CONNACK)</td></tr>
+          <tr><td><code>acl</code> (publish)</td><td>tópico diferente do próprio</td><td>broker descarta silenciosamente</td></tr>
+          <tr><td><code>acl</code> (delivery)</td><td>regra de leitura ausente no banco</td><td>broker não entrega ao subscriber</td></tr>
+          <tr><td>subscriber</td><td>campo faltando no JSON</td><td>leitura descartada, erro logado</td></tr>
+          <tr><td>subscriber</td><td><code>capturado_em</code> inválido</td><td>insert falha, rollback, erro logado</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn">
+        <span class="note-tag">O publish rejeitado não avisa o cliente</span>
+        <p>Em MQTT 3.1.1 com QoS 0, o cliente não recebe notificação quando o broker bloqueia uma publicação. Para confirmar o bloqueio, verifique a ausência da leitura no banco.</p>
+      </div>
+    </section>
+
+    <section id="env">
+      <h2><span class="step-tag">Etapa 1</span>Configurando as variáveis de ambiente</h2>
+      <p>A stack lê as credenciais de <code>infra/.env</code>. Copie o exemplo e preencha os valores:</p>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>cd infra/
+cp .env.example .env</pre>
+      </div>
+
+      <p>Para desenvolvimento local, os valores padrão do <code>.env.example</code> já funcionam com o seed de teste — basta descomentá-los.</p>
+
+      <div class="note danger">
+        <span class="note-tag">Nunca commite o .env</span>
+        <p>O arquivo já está no <code>.gitignore</code>. As credenciais de teste deste guia são públicas por design e servem apenas para desenvolvimento local.</p>
+      </div>
+
+      <div class="note warn">
+        <span class="note-tag">A senha do subscriber é gravada no banco</span>
+        <p>O valor de <code>MQTT_SUBSCRIBER_PASSWORD</code> definido aqui é o mesmo que o seed grava no banco durante a inicialização. Se você alterá-lo depois que a stack já subiu, recrie o volume com <code>docker compose down -v</code> para o seed rodar de novo com a senha nova — caso contrário o subscriber conecta com uma senha que não bate com o hash e a autenticação falha silenciosamente.</p>
+      </div>
+    </section>
+
+    <section id="subir">
+      <h2><span class="step-tag">Etapa 2</span>Subindo a stack</h2>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>cd infra/
+docker compose up -d --build</pre>
+      </div>
+
+      <p>A flag <code>--build</code> garante que as imagens da API e do subscriber sejam reconstruídas. Nas execuções seguintes, sem alteração de código, use apenas <code>docker compose up -d</code>.</p>
+
+      <p>Aguarde alguns segundos e confira se os quatro contêineres estão de pé:</p>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker compose ps</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>NAME                     STATUS
+observatorio_db          running
+observatorio_api         running
+observatorio_broker      running
+observatorio_subscriber  running</pre>
+      </div>
+    </section>
+
+    <section id="verificar">
+      <h2><span class="step-tag">Etapa 3</span>Verificando cada serviço</h2>
+
+      <h3>Banco de dados</h3>
+      <p>As quatro tabelas devem existir:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker exec -it observatorio_db psql -U admin_ufpa -d observatorio -c "\dt"</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>         List of relations
+ Schema |    Name     | Type  |   Owner
+--------+-------------+-------+-----------
+ public | dispositivos| table | admin_ufpa
+ public | leituras    | table | admin_ufpa
+ public | regras_acl  | table | admin_ufpa
+ public | usuarios    | table | admin_ufpa</pre>
+      </div>
+
+      <p>Confirme que o seed foi aplicado — o dispositivo de teste e o ingestor devem aparecer:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker exec -it observatorio_db psql -U admin_ufpa -d observatorio \
+  -c "SELECT username_mqtt FROM dispositivos;"</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>   username_mqtt
+------------------
+ esp32_teste_01
+ sistema_ingestao</pre>
+      </div>
+
+      <h3>API de autenticação</h3>
+      <p>Credenciais válidas devem retornar <code>200</code>:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8000/api/mqtt/auth \
+  -H "Content-Type: application/json" \
+  -d '{"username": "esp32_teste_01", "password": "token_123"}'</pre>
+      </div>
+
+      <p>E credenciais inválidas devem retornar <code>401</code>:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8000/api/mqtt/auth \
+  -H "Content-Type: application/json" \
+  -d '{"username": "esp32_teste_01", "password": "senha_errada"}'</pre>
+      </div>
+
+      <h3>Subscriber</h3>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker compose logs subscriber</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>... INFO Banco conectado.
+... INFO Broker conectado.</pre>
+      </div>
+    </section>
+
+    <section id="simular">
+      <h2><span class="step-tag">Etapa 4</span>Simulando um dispositivo ESP32</h2>
+      <p>O dispositivo de teste já vem cadastrado no seed:</p>
+
+      <table>
+        <thead>
+          <tr><th>Campo</th><th>Valor</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>username_mqtt</code></td><td><code>esp32_teste_01</code></td></tr>
+          <tr><td>token</td><td><code>token_123</code></td></tr>
+          <tr><td>tópico</td><td><code>sensores/telemetria/esp32_teste_01</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Publicando com mosquitto_pub</h3>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>mosquitto_pub \
+  -h localhost -p 1883 \
+  -u esp32_teste_01 -P token_123 \
+  -t "sensores/telemetria/esp32_teste_01" \
+  -m '{"capturado_em":"2026-06-26T10:30:00Z","temperature":28.5,"humidity":72.1,"pm1_cf":12,"pm25_cf":18,"pm10_cf":24,"pm1_atm":11,"pm25_atm":17,"pm10_atm":23}'</pre>
+      </div>
+
+      <h3>Alternativa em Python</h3>
+      <div class="code">
+        <div class="code-head"><span class="code-label">python</span><button class="copy" type="button">Copiar</button></div>
+<pre>import paho.mqtt.client as mqtt
+import json
+
+payload = {
+    "capturado_em": "2026-06-26T10:30:00Z",
+    "temperature": 28.5,
+    "humidity": 72.1,
+    "pm1_cf": 12, "pm25_cf": 18, "pm10_cf": 24,
+    "pm1_atm": 11, "pm25_atm": 17, "pm10_atm": 23,
+}
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client.username_pw_set("esp32_teste_01", "token_123")
+client.connect("localhost", 1883)
+client.publish("sensores/telemetria/esp32_teste_01", json.dumps(payload))
+client.disconnect()</pre>
+      </div>
+    </section>
+
+    <section id="ingestao">
+      <h2><span class="step-tag">Etapa 5</span>Verificando a ingestão</h2>
+      <p>Depois de publicar, o subscriber deve registrar a leitura:</p>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker compose logs subscriber</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>... INFO Leitura persistida: esp32_teste_01 @ 2026-06-26T10:30:00Z</pre>
+      </div>
+
+      <p>E a linha deve estar no banco:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker exec -it observatorio_db psql -U admin_ufpa -d observatorio \
+  -c "SELECT capturado_em, recebido_em, temperature, humidity, pm25_cf FROM leituras ORDER BY recebido_em DESC LIMIT 5;"</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>       capturado_em        |         recebido_em          | temperature | humidity | pm25_cf
+---------------------------+------------------------------+-------------+----------+---------
+ 2026-06-26 10:30:00+00    | 2026-06-26 13:45:01.234+00   |        28.5 |     72.1 |      18</pre>
+      </div>
+
+      <div class="note">
+        <span class="note-tag">Por que dois timestamps</span>
+        <p><code>capturado_em</code> vem do dispositivo; <code>recebido_em</code> é gravado pelo servidor. A diferença entre os dois revela a latência de entrega — ou quanto tempo a estação passou offline antes de reenviar.</p>
+      </div>
+    </section>
+
+    <section id="rejeicao">
+      <h2><span class="step-tag">Etapa 6</span>Testando a rejeição de acesso</h2>
+      <p>O broker não aceita conexões anônimas nem publicações em tópicos alheios. Vale confirmar as duas barreiras.</p>
+
+      <h3>Conexão sem credenciais</h3>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>mosquitto_pub -h localhost -p 1883 \
+  -t "sensores/telemetria/esp32_teste_01" \
+  -m "teste" 2>&amp;1</pre>
+      </div>
+
+      <div class="code out">
+        <div class="code-head"><span class="code-label">saída esperada</span></div>
+<pre>Connection error: Connection Refused: not authorised.</pre>
+      </div>
+
+      <h3>Publicação em tópico alheio</h3>
+      <p>Aqui a estação está autenticada, mas tenta publicar no tópico de outro dispositivo:</p>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>mosquitto_pub \
+  -h localhost -p 1883 \
+  -u esp32_teste_01 -P token_123 \
+  -t "sensores/telemetria/outro_dispositivo" \
+  -m "teste"</pre>
+      </div>
+
+      <div class="note warn">
+        <span class="note-tag">A rejeição é silenciosa no cliente</span>
+        <p>Em MQTT 3.1.1 com QoS 0, o broker descarta a mensagem sem avisar o cliente: o comando termina com <code>exit 0</code> e sem saída. A rejeição aparece no log da API (<code>401</code>) e é confirmável pelo banco — nenhuma linha nova deve surgir em <code>leituras</code>.</p>
+      </div>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker exec -it observatorio_db psql -U admin_ufpa -d observatorio \
+  -c "SELECT COUNT(*) FROM leituras;"</pre>
+      </div>
+
+      <p>O contador deve permanecer igual ao de antes da tentativa.</p>
+    </section>
+
+    <section id="logs">
+      <h2><span class="step-tag">Etapa 7</span>Acompanhando os logs em tempo real</h2>
+      <p>Para depurar o fluxo completo, deixe dois terminais abertos.</p>
+
+      <h3>Terminal 1 — subscriber</h3>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>cd infra &amp;&amp; docker compose logs -f subscriber</pre>
+      </div>
+
+      <h3>Terminal 2 — broker</h3>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>cd infra &amp;&amp; docker compose logs -f mosquitto</pre>
+      </div>
+    </section>
+
+    <section id="parar">
+      <h2><span class="step-tag">Etapa 8</span>Parando a stack</h2>
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>cd infra &amp;&amp; docker compose down</pre>
+      </div>
+
+      <p>Os dados ficam preservados no volume <code>db_data</code>. Para resetar tudo do zero:</p>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>docker compose down -v</pre>
+      </div>
+
+      <div class="note danger">
+        <span class="note-tag">down -v apaga o banco</span>
+        <p>Use somente quando quiser recomeçar do estado limpo — por exemplo, depois de alterar <code>init.sql</code> ou <code>seed.sql</code>, que só rodam na criação do volume.</p>
+      </div>
+    </section>
+
+    <section id="credenciais">
+      <h2><span class="step-tag">Referência</span>Credenciais de teste</h2>
+
+      <table>
+        <thead>
+          <tr><th>Entidade</th><th>Usuário</th><th>Senha / token</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ESP32 de teste</td><td><code>esp32_teste_01</code></td><td><code>token_123</code></td></tr>
+          <tr><td>Subscriber</td><td><code>sistema_ingestao</code></td><td><code>ingestao_token_123</code></td></tr>
+          <tr><td>Usuário admin</td><td>—</td><td><code>senha123</code></td></tr>
+          <tr><td>PostgreSQL</td><td><code>admin_ufpa</code></td><td><code>observatorio_laai</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="note danger">
+        <span class="note-tag">Apenas para desenvolvimento local</span>
+        <p>Estas credenciais são públicas por estarem num repositório aberto. Nunca use este seed em produção — gere credenciais fora do repositório para o ambiente da UFPA ou para qualquer instância auto-hospedada.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <p>Observatório do Ar · UFPA · Guia de testes da stack local</p>
+</footer>
+
+<script>
+// Copiar blocos de código
+document.querySelectorAll('.copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var pre = btn.closest('.code').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(function () {
+      btn.textContent = 'Copiado';
+      btn.classList.add('done');
+      setTimeout(function () {
+        btn.textContent = 'Copiar';
+        btn.classList.remove('done');
+      }, 1600);
+    });
+  });
+});
+
+// Destaca a etapa atual no rail
+var links = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+var sections = links.map(function (a) {
+  return document.querySelector(a.getAttribute('href'));
+});
+
+var spy = new IntersectionObserver(function (entries) {
+  entries.forEach(function (entry) {
+    if (entry.isIntersecting) {
+      var i = sections.indexOf(entry.target);
+      links.forEach(function (a) { a.classList.remove('on'); });
+      if (i > -1) links[i].classList.add('on');
+    }
+  });
+}, { rootMargin: '-10% 0px -70% 0px' });
+
+sections.forEach(function (s) { if (s) spy.observe(s); });
+
+// Campo de partículas no hero — material particulado em suspensão
+(function () {
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var canvas = document.getElementById('particles');
+  var ctx = canvas.getContext('2d');
+  var particles = [];
+  var w, h, dpr;
+
+  function size() {
+    dpr = window.devicePixelRatio || 1;
+    w = canvas.offsetWidth;
+    h = canvas.offsetHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function seed() {
+    particles = [];
+    var count = Math.round((w * h) / 9000);
+    for (var i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.9 + 0.4,
+        vx: (Math.random() - 0.5) * 0.16,
+        vy: (Math.random() - 0.5) * 0.1,
+        a: Math.random() * 0.3 + 0.06
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(57, 90, 127, ' + p.a + ')';
+      ctx.fill();
+    }
+  }
+
+  function step() {
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < -5) p.x = w + 5;
+      if (p.x > w + 5) p.x = -5;
+      if (p.y < -5) p.y = h + 5;
+      if (p.y > h + 5) p.y = -5;
+    }
+    draw();
+    requestAnimationFrame(step);
+  }
+
+  size();
+  seed();
+  draw();
+  if (!reduce) requestAnimationFrame(step);
+
+  window.addEventListener('resize', function () {
+    size();
+    seed();
+    draw();
+  });
+})();
+</script>
+
+</body>
+</html>
