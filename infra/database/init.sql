@@ -24,3 +24,20 @@ CREATE TABLE regras_acl (
 
 CREATE INDEX idx_dispositivos_username ON dispositivos(username_mqtt);
 CREATE INDEX idx_dispositivos_regras_acl_dispositivo ON regras_acl(dispositivo_id);
+
+CREATE TABLE leituras (
+    id             BIGSERIAL PRIMARY KEY,
+    dispositivo_id UUID NOT NULL REFERENCES dispositivos(id),
+    capturado_em   TIMESTAMPTZ NOT NULL,
+    recebido_em    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    temperature    FLOAT NOT NULL,
+    humidity       FLOAT NOT NULL,
+    pm1_cf         INT NOT NULL,
+    pm25_cf        INT NOT NULL,
+    pm10_cf        INT NOT NULL,
+    pm1_atm        INT NOT NULL,
+    pm25_atm       INT NOT NULL,
+    pm10_atm       INT NOT NULL
+);
+
+CREATE INDEX idx_leituras_dispositivo_tempo ON leituras(dispositivo_id, capturado_em DESC);

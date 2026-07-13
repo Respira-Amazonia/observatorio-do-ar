@@ -3,15 +3,16 @@ services:
     image: postgres:15-alpine
     container_name: observatorio_db
     environment:
-      POSTGRES_DB: observatorio
-      POSTGRES_USER: admin_ufpa
-      POSTGRES_PASSWORD: observatorio_laai
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MQTT_SUBSCRIBER_PASSWORD: ${MQTT_SUBSCRIBER_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - ./database/seed.sh:/docker-entrypoint-initdb.d/02-seed.sh
     networks:
       - observatorio_net
 
@@ -19,12 +20,12 @@ services:
     build: ./api
     container_name: observatorio_api
     environment:
-      DB_USER: admin_ufpa
-      DB_PASSWORD: observatorio_laai
-      DB_NAME: observatorio
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
       DB_HOST: observatorio_db
       DB_PORT: 5432
-    ports: 
+    ports:
       - "8000:8000"
     networks:
       - observatorio_net
@@ -36,7 +37,6 @@ services:
     container_name: observatorio_broker
     ports:
       - "1883:1883"
-      - "8883:8883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/etc/mosquitto/mosquitto.conf
       - ./mosquitto/data:/mosquitto/data
@@ -46,6 +46,25 @@ services:
     depends_on:
       - db
       - api
+
+  subscriber:
+    build: ./subscriber
+    container_name: observatorio_subscriber
+    environment:
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_HOST: observatorio_db
+      DB_PORT: 5432
+      BROKER_HOST: observatorio_broker
+      BROKER_PORT: 1883
+      MQTT_USERNAME: ${MQTT_SUBSCRIBER_USERNAME}
+      MQTT_PASSWORD: ${MQTT_SUBSCRIBER_PASSWORD}
+    networks:
+      - observatorio_net
+    depends_on:
+      - db
+      - mosquitto
 
 networks:
   observatorio_net:

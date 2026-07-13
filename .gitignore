@@ -5,6 +5,7 @@
 .env.*
 *.pem
 *.key
+!.env.example
 
 # ==========================================
 # Caches e Binários Python (FastAPI)
@@ -53,3 +54,4 @@ infra/mosquitto/log/*
 # ==========================================
 .DS_Store
 Thumbs.db
+
