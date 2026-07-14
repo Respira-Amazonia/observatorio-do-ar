@@ -515,6 +515,13 @@
         <li>Um cliente MQTT para simular o ESP32 — <strong>mosquitto-clients</strong> (recomendado) via <code>sudo apt install mosquitto-clients</code>, ou <strong>paho-mqtt</strong> via <code>pip install paho-mqtt</code></li>
       </ul>
 
+      <div class="note warn">
+        <span class="note-tag">Linux — permissão do socket Docker</span>
+        <p>No Linux, o Docker exige que seu usuário faça parte do grupo <code>docker</code> para rodar sem <code>sudo</code>. Se você receber <em>"permission denied while trying to connect to the Docker daemon socket"</em>, execute uma vez:</p>
+        <p><code>sudo usermod -aG docker $USER</code></p>
+        <p>Depois faça logout e login de volta (ou rode <code>newgrp docker</code> na sessão atual). Confirme com <code>docker ps</code> — sem erro, pode prosseguir.</p>
+      </div>
+
       <p>Confirme que as duas ferramentas respondem:</p>
       <div class="code">
         <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
@@ -625,7 +632,13 @@ mosquitto_pub --version</pre>
 
     <section id="env">
       <h2><span class="step-tag">Etapa 1</span>Configurando as variáveis de ambiente</h2>
-      <p>A stack lê as credenciais de <code>infra/.env</code>. Copie o exemplo e preencha os valores:</p>
+
+      <div class="note danger">
+        <span class="note-tag">Faça isso antes de qualquer docker compose up</span>
+        <p>O PostgreSQL lê <code>POSTGRES_USER</code> e <code>POSTGRES_PASSWORD</code> apenas na primeira inicialização — quando o volume é criado. Se você subir a stack com os valores de placeholder (<code>TROQUE_O_USUARIO</code> etc.), o banco é criado com esse usuário errado e nenhum comando <code>psql</code> vai funcionar. Para recuperar: <code>docker compose down -v</code> e suba de novo com o <code>.env</code> correto.</p>
+      </div>
+
+      <p>Copie o arquivo de exemplo e substitua o conteúdo pelos valores de desenvolvimento abaixo:</p>
 
       <div class="code">
         <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
@@ -633,7 +646,26 @@ mosquitto_pub --version</pre>
 cp .env.example .env</pre>
       </div>
 
-      <p>Para desenvolvimento local, os valores padrão do <code>.env.example</code> já funcionam com o seed de teste — basta descomentá-los.</p>
+      <p>Abra o <code>.env</code> num editor e preencha com os valores de teste (ou cole o bloco abaixo diretamente):</p>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">infra/.env — copie e cole para dev local</span><button class="copy" type="button">Copiar</button></div>
+<pre>POSTGRES_DB=observatorio
+POSTGRES_USER=admin_ufpa
+POSTGRES_PASSWORD=observatorio_laai
+
+MQTT_SUBSCRIBER_USERNAME=sistema_ingestao
+MQTT_SUBSCRIBER_PASSWORD=ingestao_token_123</pre>
+      </div>
+
+      <p>Confirme que nenhum placeholder sobrou:</p>
+
+      <div class="code">
+        <div class="code-head"><span class="code-label">bash</span><button class="copy" type="button">Copiar</button></div>
+<pre>grep "TROQUE" .env</pre>
+      </div>
+
+      <p>O comando não deve retornar nenhuma linha. Se retornar, edite o <code>.env</code> antes de continuar.</p>
 
       <div class="note danger">
         <span class="note-tag">Nunca commite o .env</span>
@@ -897,7 +929,7 @@ client.disconnect()</pre>
 
       <div class="note danger">
         <span class="note-tag">down -v apaga o banco</span>
-        <p>Use somente quando quiser recomeçar do estado limpo — por exemplo, depois de alterar <code>init.sql</code> ou <code>seed.sql</code>, que só rodam na criação do volume.</p>
+        <p>Use somente quando quiser recomeçar do estado limpo — por exemplo, depois de alterar <code>init.sql</code> ou <code>seed.sh</code>, que só rodam na criação do volume.</p>
       </div>
     </section>
 
