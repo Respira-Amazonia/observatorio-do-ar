@@ -410,6 +410,35 @@
 
   :focus-visible{outline:2px solid var(--laser);outline-offset:3px}
 
+  /* ---------- TABS ---------- */
+  .tabbar{
+    background:var(--haze);
+    border-bottom:1px solid var(--rule);
+  }
+  .tabbar-inner{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 2rem;
+    display:flex;
+    gap:0;
+  }
+  .tab{
+    font-family:var(--mono);
+    font-size:.72rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    padding:.85rem 1.4rem;
+    border:none;
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+    background:none;
+    cursor:pointer;
+    color:var(--ink-faint);
+    transition:color .18s ease,border-color .18s ease;
+  }
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--ink);border-bottom-color:var(--laser)}
+
   /* ---------- RESPONSIVE ---------- */
   @media (max-width:900px){
     .shell{
@@ -486,7 +515,14 @@
   </div>
 </header>
 
-<div class="shell">
+<div class="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab on" data-tab="tutorial">Subindo o servidor</button>
+    <button class="tab" data-tab="codigo">Conhecendo o código</button>
+  </div>
+</div>
+
+<div class="shell" id="panel-tutorial">
 
   <nav class="rail" aria-label="Etapas do tutorial">
     <p class="rail-title">Etapas</p>
@@ -514,6 +550,13 @@
         <li><a href="https://docs.docker.com/get-docker/">Docker</a> com o plugin Compose (o comando <code>docker compose</code>, não <code>docker-compose</code>)</li>
         <li>Um cliente MQTT para simular o ESP32 — <strong>mosquitto-clients</strong> (recomendado) via <code>sudo apt install mosquitto-clients</code>, ou <strong>paho-mqtt</strong> via <code>pip install paho-mqtt</code></li>
       </ul>
+
+      <div class="note warn">
+        <span class="note-tag">Linux — permissão dos diretórios do Mosquitto</span>
+        <p>O Mosquitto roda dentro do container como usuário <code>1883</code>. Os diretórios <code>mosquitto/data/</code> e <code>mosquitto/log/</code> são montados do host, mas pertencem ao seu usuário — o broker não consegue escrever e crasha na inicialização. Sintoma: o subscriber loga <em>"Broker indisponível: Temporary failure in name resolution"</em> porque o container morreu e saiu da rede Docker.</p>
+        <p>Corrija antes de subir a stack:</p>
+        <p><code>sudo chown -R 1883:1883 mosquitto/data mosquitto/log</code></p>
+      </div>
 
       <div class="note warn">
         <span class="note-tag">Linux — permissão do socket Docker</span>
@@ -957,11 +1000,263 @@ client.disconnect()</pre>
   </main>
 </div>
 
+<div class="shell" id="panel-codigo" style="display:none">
+
+  <nav class="rail" aria-label="Seções do código fonte">
+    <p class="rail-title">Seções</p>
+    <ol>
+      <li><a href="#tecnologias">Tecnologias</a></li>
+      <li><a href="#estrutura">Estrutura de arquivos</a></li>
+      <li><a href="#comp-banco">Banco de dados</a></li>
+      <li><a href="#comp-api">API de autenticação</a></li>
+      <li><a href="#comp-broker">Broker MQTT</a></li>
+      <li><a href="#comp-subscriber">Subscriber</a></li>
+    </ol>
+  </nav>
+
+  <main id="main-codigo">
+
+    <section id="tecnologias">
+      <h2><span class="step-tag">Visão geral</span>Tecnologias</h2>
+      <p>A stack usa exclusivamente ferramentas open-source. Cada componente foi escolhido para ser auto-hospedável sem dependências de nuvem proprietária.</p>
+
+      <table>
+        <thead>
+          <tr><th>Tecnologia</th><th>Versão / Imagem</th><th>Papel no sistema</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Docker / Compose</strong></td>
+            <td>—</td>
+            <td>Containeriza os 4 serviços em rede bridge isolada (<code>observatorio_net</code>); lê credenciais do <code>.env</code></td>
+          </tr>
+          <tr>
+            <td><strong>PostgreSQL</strong></td>
+            <td><code>postgres:15-alpine</code></td>
+            <td>Banco relacional: usuários, dispositivos, regras ACL e leituras de telemetria</td>
+          </tr>
+          <tr>
+            <td><strong>pgcrypto</strong></td>
+            <td>extensão nativa</td>
+            <td>Hashing bcrypt via <code>crypt()</code> + <code>gen_salt('bf')</code> — nenhuma senha é armazenada em texto puro</td>
+          </tr>
+          <tr>
+            <td><strong>Mosquitto</strong></td>
+            <td><code>mosquitto_2.0.18</code></td>
+            <td>Broker MQTT open-source; configurado sem conexão anônima</td>
+          </tr>
+          <tr>
+            <td><strong>mosquitto-go-auth</strong></td>
+            <td><code>3.0.0</code></td>
+            <td>Plugin do Mosquitto que intercepta cada CONNECT, PUBLISH e SUBSCRIBE e os delega à API via HTTP</td>
+          </tr>
+          <tr>
+            <td><strong>FastAPI</strong></td>
+            <td><code>0.135.2</code></td>
+            <td>Framework web assíncrono Python; serve os dois endpoints de auth e ACL consultados pelo broker</td>
+          </tr>
+          <tr>
+            <td><strong>asyncpg</strong></td>
+            <td><code>0.31.0</code></td>
+            <td>Driver assíncrono de PostgreSQL para a API; mantém pool de 10–20 conexões</td>
+          </tr>
+          <tr>
+            <td><strong>uvicorn</strong></td>
+            <td><code>0.42.0</code></td>
+            <td>Servidor ASGI que executa a aplicação FastAPI dentro do container</td>
+          </tr>
+          <tr>
+            <td><strong>paho-mqtt</strong></td>
+            <td><code>2.1.0</code></td>
+            <td>Biblioteca MQTT Python usada pelo subscriber para se conectar ao broker e receber mensagens</td>
+          </tr>
+          <tr>
+            <td><strong>psycopg2</strong></td>
+            <td><code>2.9.9</code></td>
+            <td>Driver síncrono de PostgreSQL usado pelo subscriber para persistir leituras</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="estrutura">
+      <h2><span class="step-tag">Mapa</span>Estrutura de arquivos</h2>
+      <p>Todos os arquivos do servidor ficam em <code>infra/</code>. Cada subdiretório corresponde a um serviço do Compose.</p>
+
+      <div class="diagram">
+<pre>infra/
+├── docker-compose.yml          ← orquestração dos 4 serviços e variáveis de ambiente
+├── .env.example                ← template versionado (placeholders, sem credenciais reais)
+├── .env                        ← credenciais locais  [gitignored — não entra no repositório]
+│
+├── database/
+│   ├── init.sql                ← cria as 4 tabelas e índices
+│   └── seed.sh                 ← dados de teste; lê senha do subscriber do ambiente
+│
+├── api/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── main.py                 ← endpoints FastAPI + pool asyncpg com retry
+│   └── repositories.py         ← queries SQL e matching de wildcard MQTT (#, +)
+│
+├── mosquitto/
+│   └── config/
+│       └── mosquitto.conf      ← listener 1883, allow_anonymous false, plugin go-auth
+│
+└── subscriber/
+    ├── Dockerfile
+    ├── requirements.txt
+    └── main.py                 ← consome sensores/telemetria/# e persiste em leituras</pre>
+      </div>
+    </section>
+
+    <section id="comp-banco">
+      <h2><span class="step-tag">Componente</span>Banco de dados</h2>
+      <p>O PostgreSQL é inicializado automaticamente pelo container: na criação do volume, o Docker executa os arquivos em <code>/docker-entrypoint-initdb.d/</code> em ordem alfabética — <code>01-init.sql</code> antes de <code>02-seed.sh</code>.</p>
+
+      <h3>database/init.sql</h3>
+      <p>Cria as quatro tabelas do sistema:</p>
+      <ul>
+        <li><code>usuarios</code> — pessoas que operam o sistema (e-mail, hash bcrypt, timestamp de consentimento LGPD)</li>
+        <li><code>dispositivos</code> — estações ESP32 vinculadas a um usuário; cada uma tem <code>username_mqtt</code> e <code>token_senha_hash</code> para autenticação no broker</li>
+        <li><code>regras_acl</code> — permissões MQTT por dispositivo: tópico e tipo de acesso (<code>permissao_rw</code>: 1=leitura, 2=publicação, 4=subscrição)</li>
+        <li><code>leituras</code> — cada medição recebida, com dois timestamps: <code>capturado_em</code> (gerado pelo dispositivo) e <code>recebido_em</code> (gerado pelo servidor no INSERT)</li>
+      </ul>
+
+      <h3>database/seed.sh</h3>
+      <p>Shell script executado na inicialização do container. Insere os dados de desenvolvimento: um usuário de teste, a estação <code>esp32_teste_01</code> e o serviço de ingestão <code>sistema_ingestao</code>. A senha do subscriber é lida da variável de ambiente <code>MQTT_SUBSCRIBER_PASSWORD</code> via <code>psql -v</code> — nunca está escrita no script.</p>
+      <div class="note warn">
+        <span class="note-tag">Apenas para desenvolvimento</span>
+        <p>O seed contém credenciais fixas e públicas por design. Para qualquer instância em produção — UFPA ou auto-hospedagem — gere credenciais fora do repositório e nunca use este seed.</p>
+      </div>
+    </section>
+
+    <section id="comp-api">
+      <h2><span class="step-tag">Componente</span>API de autenticação</h2>
+      <p>Aplicação FastAPI com dois endpoints. O Mosquitto consulta esses endpoints a cada CONNECT, PUBLISH e SUBSCRIBE — resposta <code>200</code> = permitido, <code>401</code> = negado.</p>
+
+      <h3>api/main.py</h3>
+      <p>Ponto de entrada da aplicação. Responsabilidades:</p>
+      <ul>
+        <li>Lê variáveis de ambiente via <code>pydantic-settings</code> (<code>DB_USER</code>, <code>DB_PASSWORD</code>, etc.)</li>
+        <li>Cria o pool de conexões <code>asyncpg</code> na inicialização, com retry de até 5 tentativas (o banco pode demorar alguns segundos para aceitar conexões)</li>
+        <li><code>POST /api/mqtt/auth</code> — valida <code>username</code> e <code>password</code> contra o hash bcrypt da tabela <code>dispositivos</code></li>
+        <li><code>POST /api/mqtt/acl</code> — valida se o <code>username</code> tem a permissão do tipo <code>acc</code> no tópico informado</li>
+      </ul>
+
+      <h3>api/repositories.py</h3>
+      <p>Camada de acesso ao banco. Contém duas classes:</p>
+      <ul>
+        <li><code>AuthRepository</code> — executa <code>crypt(senha_informada, hash_armazenado)</code> diretamente no PostgreSQL via pgcrypto; retorna <code>dispositivo_id</code> se bater</li>
+        <li><code>ACLRepository</code> — busca todas as regras do usuário com o tipo de acesso solicitado e faz o matching de tópico MQTT em Python, suportando wildcards <code>#</code> (multi-nível) e <code>+</code> (nível único)</li>
+      </ul>
+      <div class="note">
+        <span class="note-tag">Por que o matching de wildcard é em Python, não em SQL</span>
+        <p>O operador <code>=</code> do SQL não entende wildcards MQTT. Quando o broker entrega uma mensagem ao subscriber, ele verifica a permissão com o tópico concreto (ex: <code>sensores/telemetria/esp32_01</code>). Uma comparação literal contra <code>sensores/telemetria/#</code> retornaria falso. A solução: buscar todas as regras do usuário e fazer o matching na aplicação com funções que implementam a semântica MQTT corretamente.</p>
+      </div>
+    </section>
+
+    <section id="comp-broker">
+      <h2><span class="step-tag">Componente</span>Broker MQTT</h2>
+      <p>O Mosquitto é o coração da comunicação. Toda estação ESP32 publica para ele; o subscriber consome dele. Nenhuma mensagem passa sem autenticação.</p>
+
+      <h3>mosquitto/config/mosquitto.conf</h3>
+      <div class="code out">
+        <div class="code-head"><span class="code-label">mosquitto.conf</span></div>
+<pre>listener 1883
+persistence true
+allow_anonymous false        ← toda conexão exige credenciais
+
+auth_plugin /mosquitto/go-auth.so
+
+auth_opt_backends http
+auth_opt_http_host observatorio_api   ← nome do container na rede Docker
+auth_opt_http_port 8000
+
+auth_opt_http_getuser_uri /api/mqtt/auth
+auth_opt_http_aclcheck_uri /api/mqtt/acl
+
+auth_opt_disable_superuser true</pre>
+      </div>
+      <p>O plugin <code>mosquitto-go-auth</code> faz até quatro chamadas à API por publicação recebida:</p>
+      <table>
+        <thead><tr><th>Evento MQTT</th><th>Endpoint</th><th>Campo <code>acc</code></th></tr></thead>
+        <tbody>
+          <tr><td>CONNECT do dispositivo</td><td><code>/api/mqtt/auth</code></td><td>—</td></tr>
+          <tr><td>PUBLISH do dispositivo</td><td><code>/api/mqtt/acl</code></td><td><code>2</code> (MOSQ_ACL_WRITE)</td></tr>
+          <tr><td>SUBSCRIBE do subscriber</td><td><code>/api/mqtt/acl</code></td><td><code>4</code> (MOSQ_ACL_SUBSCRIBE)</td></tr>
+          <tr><td>entrega ao subscriber</td><td><code>/api/mqtt/acl</code></td><td><code>1</code> (MOSQ_ACL_READ)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="comp-subscriber">
+      <h2><span class="step-tag">Componente</span>Subscriber</h2>
+      <p>Processo Python de longa duração que assina <code>sensores/telemetria/#</code> e persiste cada mensagem no banco. É o único componente que escreve na tabela <code>leituras</code>.</p>
+
+      <h3>subscriber/main.py</h3>
+      <p>Fluxo de cada mensagem recebida:</p>
+      <ul>
+        <li>Extrai o <code>username_mqtt</code> do sufixo do tópico — <code>sensores/telemetria/<strong>&lt;username&gt;</strong></code></li>
+        <li>Deserializa o payload JSON</li>
+        <li>Valida a presença dos campos obrigatórios: <code>capturado_em</code>, <code>temperature</code>, <code>humidity</code>, <code>pm1_cf</code>, <code>pm25_cf</code>, <code>pm10_cf</code>, <code>pm1_atm</code>, <code>pm25_atm</code>, <code>pm10_atm</code></li>
+        <li>Busca o <code>dispositivo_id</code> pelo <code>username_mqtt</code> na tabela <code>dispositivos</code></li>
+        <li>Insere em <code>leituras</code> — o campo <code>recebido_em</code> é preenchido automaticamente com <code>DEFAULT NOW()</code></li>
+      </ul>
+      <p>Tanto a conexão com o banco quanto a com o broker têm retry de até 10 tentativas com intervalo de 3 s — necessário porque o Docker não garante que o banco e o broker estejam prontos quando o subscriber inicia.</p>
+      <div class="note">
+        <span class="note-tag">Por que dois timestamps</span>
+        <p><code>capturado_em</code> vem do JSON do dispositivo — representa o instante real da medição. <code>recebido_em</code> é gravado pelo servidor no momento do INSERT. A diferença entre os dois indica quanto tempo a estação ficou offline (store-and-forward) ou a latência de rede.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
 <footer>
   <p>Observatório do Ar · UFPA · Guia de testes da stack local</p>
 </footer>
 
 <script>
+// Troca de abas
+(function () {
+  var tabs = document.querySelectorAll('.tab');
+  var panelTutorial = document.getElementById('panel-tutorial');
+  var panelCodigo   = document.getElementById('panel-codigo');
+
+  tabs.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabs.forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      if (btn.dataset.tab === 'tutorial') {
+        panelTutorial.style.display = '';
+        panelCodigo.style.display   = 'none';
+      } else {
+        panelTutorial.style.display = 'none';
+        panelCodigo.style.display   = '';
+      }
+    });
+  });
+})();
+
+// Rail do segundo painel
+(function () {
+  var links2   = Array.prototype.slice.call(document.querySelectorAll('#panel-codigo .rail a'));
+  var sections2 = links2.map(function (a) {
+    return document.querySelector(a.getAttribute('href'));
+  });
+  var spy2 = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        var i = sections2.indexOf(entry.target);
+        links2.forEach(function (a) { a.classList.remove('on'); });
+        if (i > -1) links2[i].classList.add('on');
+      }
+    });
+  }, { rootMargin: '-10% 0px -70% 0px' });
+  sections2.forEach(function (s) { if (s) spy2.observe(s); });
+})();
+
 // Copiar blocos de código
 document.querySelectorAll('.copy').forEach(function (btn) {
   btn.addEventListener('click', function () {
